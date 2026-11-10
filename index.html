@@ -1,0 +1,663 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Diglot</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,400;7..72,600&family=Public+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: page content on top, one wrapping control bar at the bottom. The bar sticks to the screen edge while scrolling and rests under the content at the end. Warm paper tones, yellow only for warnings. */
+:root {
+  --bg: #ece5d3;
+  --panel: #f6f0e1;
+  --panel-alt: #efe8d6;
+  --ink: #2a251d;
+  --muted: #7b705f;
+  --line: #d4c9b1;
+  --btn-bg: #2a251d;
+  --btn-fg: #f6f0e1;
+  --warn-bg: #f4df9a;
+  --warn-ink: #4b3a00;
+  --font-read: "Literata", Georgia, "Times New Roman", serif;
+  --font-ui: "Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1b1812;
+    --panel: #23201a;
+    --panel-alt: #1f1c16;
+    --ink: #e9e0cc;
+    --muted: #a39884;
+    --line: #3a352b;
+    --btn-bg: #e9e0cc;
+    --btn-fg: #1b1812;
+    --warn-bg: #3f3411;
+    --warn-ink: #f2db8c;
+    color-scheme: dark;
+  }
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { background: var(--bg); }
+body {
+  margin: 0;
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: 14px;
+  line-height: 1.45;
+}
+button, select, input { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+
+main {
+  flex: 1;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 16px 16px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.notice {
+  background: var(--warn-bg);
+  color: var(--warn-ink);
+  border-radius: 6px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.notice a { color: inherit; text-decoration: underline; }
+
+.sheet {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.head, .prow { display: grid; grid-template-columns: 1fr 1fr; }
+.head > div {
+  padding: 8px 16px;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  background: var(--panel-alt);
+  border-bottom: 1px solid var(--line);
+}
+.head > div + div, .prow > .tr { border-left: 1px solid var(--line); }
+.prow { border-bottom: 1px solid var(--line); }
+.prow:last-child { border-bottom: 0; }
+.cell {
+  min-width: 0;
+  padding: 12px 16px;
+  font-family: var(--font-read);
+  font-size: 17px;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+.prow > .orig { background: var(--panel-alt); }
+.cell.pending { color: var(--muted); font-style: italic; font-family: var(--font-ui); font-size: 14px; }
+.cell.busy { color: var(--muted); font-family: var(--font-ui); font-size: 14px; }
+.cell.busy::after {
+  content: "";
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-left: 8px;
+  border-radius: 50%;
+  background: var(--muted);
+  animation: pulse 0.9s ease-in-out infinite alternate;
+}
+.cell.err { color: var(--warn-ink); background: var(--warn-bg); font-family: var(--font-ui); font-size: 14px; }
+@keyframes pulse { from { opacity: 0.25; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .cell.busy::after { animation: none; } }
+
+main.empty { justify-content: center; align-items: center; gap: 48px; }
+.intro, .drop { width: 100%; max-width: 640px; }
+.intro { display: flex; flex-direction: column; align-items: stretch; text-align: left; gap: 8px; }
+.intro h1 {
+  margin: 0;
+  font-family: var(--font-read);
+  font-size: 26px;
+  font-weight: 600;
+  line-height: 1.25;
+  text-wrap: balance;
+}
+.intro p { margin: 0; color: var(--muted); text-align: justify; hyphens: auto; font-size: 17px; line-height: 1.6; }
+.drop {
+  border: 2px dashed var(--line);
+  border-radius: 10px;
+  padding: 48px 16px;
+  text-align: center;
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 17px;
+}
+.drop:hover, body.dragging .drop { border-color: var(--ink); }
+body.dragging .drop { background: var(--panel); }
+
+/* bottom bar */
+.bar {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  background: var(--panel);
+  border-top: 1px solid var(--line);
+  padding: 16px;
+  padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+}
+.bar-in {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+}
+body:not(.empty) .bar-in { max-width: 1168px; }
+.progress { position: absolute; top: -1px; left: 0; right: 0; height: 2px; }
+.progress > i { display: block; height: 100%; width: 0; background: var(--ink); transition: width 0.2s; }
+
+.btn {
+  appearance: none;
+  border: 1px solid var(--line);
+  background: var(--panel-alt);
+  border-radius: 6px;
+  padding: 0 14px;
+  cursor: pointer;
+  height: 38px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.btn:hover:not(:disabled) { border-color: var(--ink); }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn.primary { background: var(--btn-bg); color: var(--btn-fg); border-color: var(--btn-bg); font-weight: 500; }
+
+select, .num {
+  border: 1px solid var(--line);
+  background-color: var(--panel-alt);
+  border-radius: 6px;
+  padding: 0 10px;
+  height: 38px;
+  line-height: 1;
+}
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 34px;
+  cursor: pointer;
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--muted) 50%),
+    linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+  background-position: calc(100% - 17px) 50%, calc(100% - 12px) 50%;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+}
+select:hover { border-color: var(--ink); }
+.num { width: 64px; text-align: center; font-variant-numeric: tabular-nums; }
+.pagectl { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.status { color: var(--muted); margin-left: auto; font-variant-numeric: tabular-nums; }
+.status:empty { display: none; }
+
+@media (max-width: 720px) {
+  .head { display: none; }
+  .prow { grid-template-columns: 1fr; }
+  .head > div + div, .prow > .tr { border-left: 0; }
+  .prow > .tr { border-top: 1px dashed var(--line); }
+  .cell { font-size: 16px; }
+  .status { margin-left: 0; width: 100%; }
+}
+</style>
+</head>
+<body>
+
+<main>
+  <div class="notice" id="notice" hidden>
+    <span id="noticeMsg"></span>
+    <span id="noticeFallback" hidden>
+      You can still translate with
+      <a href="https://translate.google.com/" target="_blank" rel="noopener">Google Translate</a> or
+      <a href="https://www.deepl.com/translator" target="_blank" rel="noopener">DeepL</a>.
+    </span>
+  </div>
+  <section class="intro" id="intro">
+    <h1>Diglot</h1>
+    <p>Open a PDF to read the original text on the left and its translation on the right. Pick the original language and the language you want in the bar below, then open the file. Translation starts as soon as the file opens.</p>
+    <p>Translation runs on your computer with Chrome's built-in translator, so the file is not uploaded anywhere. This needs desktop Chrome 138 or newer.</p>
+  </section>
+  <div class="drop" id="drop" role="button" tabindex="0" aria-label="Open a PDF">Drag &amp; drop files to translate</div>
+  <div class="sheet" id="sheet" hidden>
+    <div class="head"><div id="hOrig">Original</div><div id="hTr">Translation</div></div>
+    <div id="rows"></div>
+  </div>
+</main>
+
+<footer class="bar">
+  <div class="progress" aria-hidden="true"><i id="bar"></i></div>
+  <div class="bar-in">
+    <button class="btn primary" id="openBtn" type="button">Open PDF</button>
+    <input id="file" type="file" accept="application/pdf,.pdf" hidden>
+    <select id="from" aria-label="Original language"></select>
+    <button class="btn" id="swap" type="button" aria-label="Swap languages" title="Swap languages">&#8644;</button>
+    <select id="to" aria-label="Translate into"></select>
+    <span class="pagectl" id="pagectl" hidden>
+      <button class="btn" id="prev" type="button" aria-label="Previous page">&larr;</button>
+      <input class="num" id="pageNum" type="number" min="1" value="1" aria-label="Page number">
+      <span id="pageTotal">of 1</span>
+      <button class="btn" id="next" type="button" aria-label="Next page">&rarr;</button>
+    </span>
+    <button class="btn" id="stop" type="button" hidden>Stop</button>
+    <span class="status" id="status" role="status" aria-live="polite"></span>
+  </div>
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+(function () {
+  var LANGS = [
+    ['sv', 'Swedish'], ['en', 'English'], ['tr', 'Turkish'], ['de', 'German'], ['fr', 'French'],
+    ['es', 'Spanish'], ['it', 'Italian'], ['pt', 'Portuguese'], ['ru', 'Russian'], ['ar', 'Arabic'],
+    ['nl', 'Dutch'], ['pl', 'Polish'], ['ja', 'Japanese'], ['zh', 'Chinese'], ['ko', 'Korean']
+  ];
+  var $ = function (id) { return document.getElementById(id); };
+  var els = {
+    open: $('openBtn'), file: $('file'), from: $('from'), to: $('to'), swap: $('swap'),
+    pagectl: $('pagectl'), prev: $('prev'), next: $('next'), num: $('pageNum'), total: $('pageTotal'),
+    stop: $('stop'), rows: $('rows'), sheet: $('sheet'), status: $('status'), bar: $('bar'),
+    notice: $('notice'), noticeMsg: $('noticeMsg'), noticeFallback: $('noticeFallback'),
+    hOrig: $('hOrig'), hTr: $('hTr'), drop: $('drop'), intro: $('intro')
+  };
+
+  var S = {
+    pdf: null, pages: 0, cur: 1, shown: 0, raw: {}, trans: {}, done: {},
+    translators: {}, stop: false, running: false, job: null, armed: false
+  };
+
+  LANGS.forEach(function (l) {
+    els.from.add(new Option(l[1], l[0]));
+    els.to.add(new Option(l[1], l[0]));
+  });
+  els.from.value = 'sv';
+  els.to.value = 'en';
+
+  function langName(code) { for (var i = 0; i < LANGS.length; i++) if (LANGS[i][0] === code) return LANGS[i][1]; return code; }
+  function setStatus(t) { els.status.textContent = t || ''; }
+  function setProgress(p) { els.bar.style.width = Math.max(0, Math.min(100, p)) + '%'; }
+  function pairKey() { return els.from.value + '>' + els.to.value; }
+  function showNotice(msg, fallback) {
+    els.noticeMsg.textContent = msg;
+    els.noticeFallback.hidden = !fallback;
+    els.notice.hidden = false;
+  }
+  function hideNotice() { els.notice.hidden = true; }
+
+  /* ---------- text cleanup and paragraph building ---------- */
+  function repairText(t) {
+    return t
+      .replace(/(?<=\p{L})\*(?=\p{L})/gu, 'ft')
+      .replace(/(?<=\p{L})5(?=\p{L})/gu, 'ff')
+      .replace(/<(?=\p{L})/gu, 'fl');
+  }
+
+  function chunk(text) {
+    if (text.length <= 650) return [text];
+    var sentences = text.match(/[^.!?]+[.!?]+["”»)]*\s*|[^.!?]+$/g) || [text];
+    var out = [], buf = '';
+    sentences.forEach(function (s) {
+      if (buf && (buf + s).length > 450) { out.push(buf.trim()); buf = ''; }
+      buf += s;
+    });
+    if (buf.trim()) out.push(buf.trim());
+    return out;
+  }
+
+  async function extract(n) {
+    if (S.raw[n]) return S.raw[n];
+    var pdf = S.pdf;
+    var page = await pdf.getPage(n);
+    var tc = await page.getTextContent();
+    var lines = [], cur = null;
+    tc.items.forEach(function (it) {
+      if (typeof it.str !== 'string' || it.str === '') return;
+      var x = it.transform[4], y = it.transform[5];
+      var h = Math.abs(it.transform[3]) || it.height || 10;
+      if (!cur || Math.abs(y - cur.y) > h * 0.5) {
+        cur = { y: y, x: x, h: h, text: '', endX: x };
+        lines.push(cur);
+      }
+      var gap = x - cur.endX;
+      if (cur.text && gap > h * 0.12 && !/\s$/.test(cur.text) && !/^\s/.test(it.str)) cur.text += ' ';
+      cur.text += it.str;
+      cur.endX = x + (it.width || 0);
+    });
+    lines.forEach(function (l) { l.text = l.text.replace(/\s+/g, ' ').trim(); });
+    lines = lines.filter(function (l) { return l.text; });
+
+    var gaps = [];
+    for (var i = 1; i < lines.length; i++) {
+      var g = lines[i - 1].y - lines[i].y;
+      if (g > 0) gaps.push(g);
+    }
+    gaps.sort(function (a, b) { return a - b; });
+    var med = gaps.length ? gaps[Math.floor(gaps.length / 2)] : 14;
+    var baseX = lines.length ? Math.min.apply(null, lines.map(function (l) { return l.x; })) : 0;
+
+    var paras = [], p = '';
+    lines.forEach(function (l, idx) {
+      var prev = lines[idx - 1];
+      var newPara = false;
+      if (prev) {
+        var gp = prev.y - l.y;
+        if (gp > med * 1.4) newPara = true;
+        if (/^[–—-]\s?\S/.test(l.text)) newPara = true;
+        if (l.x > baseX + 6 && /[.!?:"”»]$/.test(prev.text)) newPara = true;
+      }
+      if (newPara && p) { paras.push(p); p = ''; }
+      if (p && /-$/.test(p) && /^\p{Ll}/u.test(l.text)) p = p.slice(0, -1) + l.text;
+      else p = p ? p + ' ' + l.text : l.text;
+    });
+    if (p) paras.push(p);
+
+    var out = [];
+    paras.forEach(function (t) { chunk(repairText(t)).forEach(function (c) { out.push(c); }); });
+    if (S.pdf === pdf) S.raw[n] = out;
+    return out;
+  }
+
+  /* ---------- rendering ---------- */
+  function setCell(el, text, state) {
+    el.classList.remove('pending', 'busy', 'err');
+    if (state) el.classList.add(state);
+    el.textContent = text;
+  }
+
+  function mkRow(orig, tr, state) {
+    var row = document.createElement('div');
+    row.className = 'prow';
+    var a = document.createElement('div');
+    a.className = 'cell orig';
+    a.textContent = orig;
+    a.lang = els.from.value;
+    var b = document.createElement('div');
+    b.className = 'cell tr';
+    b.lang = els.to.value;
+    setCell(b, tr, state);
+    row.appendChild(a);
+    row.appendChild(b);
+    return row;
+  }
+
+  function render() {
+    els.hOrig.textContent = 'Original (' + langName(els.from.value) + ')';
+    els.hTr.textContent = 'Translation (' + langName(els.to.value) + ')';
+    els.rows.textContent = '';
+    S.shown = 0;
+    els.drop.hidden = !!S.pdf;
+    els.intro.hidden = !!S.pdf;
+    document.querySelector('main').classList.toggle('empty', !S.pdf);
+    document.body.classList.toggle('empty', !S.pdf);
+    if (!S.pdf) { els.sheet.hidden = true; return; }
+    els.sheet.hidden = false;
+    var ps = S.raw[S.cur] || [];
+    S.shown = S.cur;
+    if (!ps.length) {
+      var empty = mkRow('No text found on this page. Scanned pages need OCR first.', '', '');
+      empty.firstChild.classList.add('pending');
+      els.rows.appendChild(empty);
+      return;
+    }
+    var done = S.trans[pairKey() + '|' + S.cur] || [];
+    ps.forEach(function (t, i) {
+      els.rows.appendChild(done[i] != null ? mkRow(t, done[i], '') : mkRow(t, 'Not translated yet', 'pending'));
+    });
+  }
+
+  function updateNav() {
+    var has = !!S.pdf;
+    els.open.textContent = has ? 'Close PDF' : 'Open PDF';
+    els.pagectl.hidden = !has;
+    els.num.value = S.cur;
+    els.num.max = S.pages || 1;
+    els.total.textContent = 'of ' + (S.pages || 1);
+    els.prev.disabled = !has || S.cur <= 1;
+    els.next.disabled = !has || S.cur >= S.pages;
+    els.stop.hidden = !S.running;
+  }
+
+  async function go(n) {
+    if (!S.pdf) return;
+    n = Math.max(1, Math.min(S.pages, n | 0 || 1));
+    S.cur = n;
+    updateNav();
+    try { await extract(n); } catch (e) { setStatus('Could not read page ' + n + '.'); return; }
+    if (S.cur !== n || !S.pdf) return;
+    render();
+    window.scrollTo({ top: 0 });
+  }
+
+  /* ---------- opening and closing ---------- */
+  async function openFile(file) {
+    if (!file || S.pdf) return;
+    if (!window.pdfjsLib) { setStatus('The PDF reader failed to load. Check your connection and reload.'); return; }
+    setStatus('Opening ' + file.name + '...');
+    try {
+      var buf = await file.arrayBuffer();
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      var doc = await pdfjsLib.getDocument({ data: buf }).promise;
+      S.pdf = doc; S.pages = doc.numPages; S.cur = 1;
+      S.raw = {}; S.trans = {}; S.done = {};
+      setStatus('');
+      await go(1);
+      run();
+    } catch (e) {
+      setStatus('That file could not be opened as a PDF.');
+    }
+  }
+
+  async function closePdf() {
+    if (S.running) { S.stop = true; if (S.job) await S.job; }
+    if (S.pdf) { try { S.pdf.destroy(); } catch (e) {} }
+    S.pdf = null; S.pages = 0; S.cur = 1;
+    S.raw = {}; S.trans = {}; S.done = {};
+    hideNotice(); setStatus(''); setProgress(0);
+    render(); updateNav();
+  }
+
+  /* ---------- translation ---------- */
+  async function getTranslator() {
+    var key = pairKey();
+    if (S.translators[key]) return S.translators[key];
+    if (!('Translator' in self)) throw new Error('unsupported');
+    var opts = { sourceLanguage: els.from.value, targetLanguage: els.to.value };
+    var avail = await Translator.availability(opts);
+    if (avail === 'unavailable') throw new Error('pair');
+    var t = await Translator.create(Object.assign({}, opts, {
+      monitor: function (m) {
+        m.addEventListener('downloadprogress', function (e) {
+          setStatus('Downloading the ' + langName(opts.sourceLanguage) + ' to ' + langName(opts.targetLanguage) + ' model: ' + Math.round(e.loaded * 100) + '%');
+        });
+      }
+    }));
+    S.translators[key] = t;
+    return t;
+  }
+
+  function reportError(e) {
+    if (e && e.message === 'pair') {
+      showNotice('This browser has no model for ' + langName(els.from.value) + ' to ' + langName(els.to.value) + '.', true);
+    } else if (e && e.message === 'unsupported') {
+      showNotice('This browser does not offer on-device translation. Desktop Chrome 138 or newer does.', true);
+    } else {
+      showNotice('Translation stopped because of an error. Try again by swapping or reselecting a language.', false);
+    }
+    setStatus('');
+  }
+
+  function nextPage() {
+    var pk = pairKey();
+    for (var off = 0; off < S.pages; off++) {
+      var p = ((S.cur - 1 + off) % S.pages) + 1;
+      if (!S.done[pk + '|' + p]) return p;
+    }
+    return 0;
+  }
+
+  function doneCount() {
+    var pk = pairKey(), c = 0;
+    for (var p = 1; p <= S.pages; p++) if (S.done[pk + '|' + p]) c++;
+    return c;
+  }
+
+  async function translatePage(n, translator) {
+    var ps = await extract(n);
+    var key = pairKey() + '|' + n;
+    var done = S.trans[key] = S.trans[key] || [];
+    for (var i = 0; i < ps.length; i++) {
+      if (S.stop) return false;
+      if (done[i] != null) continue;
+      var live = (S.shown === n && key === pairKey() + '|' + S.cur);
+      var cell = null;
+      if (live) {
+        var r = els.rows.children[i];
+        cell = r && r.querySelector('.tr');
+        if (cell) setCell(cell, 'Translating', 'busy');
+      }
+      try {
+        done[i] = await translator.translate(ps[i]);
+      } catch (e) {
+        if (cell) setCell(cell, 'This paragraph failed to translate.', 'err');
+        throw e;
+      }
+      if (S.shown === n && key === pairKey() + '|' + S.cur) {
+        var r2 = els.rows.children[i];
+        var c2 = r2 && r2.querySelector('.tr');
+        if (c2) setCell(c2, done[i], '');
+      }
+    }
+    S.done[key] = true;
+    return true;
+  }
+
+  function armGesture() {
+    if (S.armed) return;
+    S.armed = true;
+    var h = function () {
+      S.armed = false;
+      document.removeEventListener('click', h, true);
+      run();
+    };
+    document.addEventListener('click', h, true);
+  }
+
+  function run() {
+    if (!S.pdf || S.running || S.job) return S.job;
+    S.job = runInner().then(function () { S.job = null; }, function () { S.job = null; });
+    return S.job;
+  }
+
+  async function runInner() {
+    var pdf = S.pdf;
+    hideNotice();
+    var translator;
+    try {
+      setStatus('Preparing translator...');
+      translator = await getTranslator();
+    } catch (e) {
+      if (S.pdf !== pdf) return;
+      if (e && e.name === 'NotAllowedError') {
+        setStatus('Click anywhere on the page to start translating.');
+        armGesture();
+        return;
+      }
+      reportError(e);
+      return;
+    }
+    if (S.pdf !== pdf) return;
+    S.running = true; S.stop = false; updateNav();
+    try {
+      var p;
+      while (!S.stop && (p = nextPage())) {
+        setStatus('Translating page ' + p + ' of ' + S.pages);
+        var ok = await translatePage(p, translator);
+        if (!ok) break;
+        setProgress((doneCount() / S.pages) * 100);
+      }
+      setStatus(S.stop ? '' : 'Translation finished');
+    } catch (e) {
+      reportError(e);
+    } finally {
+      S.running = false;
+      updateNav();
+      var finished = !S.stop;
+      setTimeout(function () { if (!S.running) setProgress(0); }, finished ? 800 : 0);
+    }
+  }
+
+  async function langChanged() {
+    hideNotice();
+    if (S.running) { S.stop = true; if (S.job) await S.job; }
+    setProgress(0);
+    render();
+    if (S.pdf) run();
+  }
+
+  /* ---------- events ---------- */
+  els.open.addEventListener('click', function () {
+    if (S.pdf) closePdf(); else els.file.click();
+  });
+  els.file.addEventListener('change', function () { openFile(els.file.files[0]); els.file.value = ''; });
+  els.prev.addEventListener('click', function () { go(S.cur - 1); });
+  els.next.addEventListener('click', function () { go(S.cur + 1); });
+  els.num.addEventListener('change', function () { go(parseInt(els.num.value, 10)); });
+  els.stop.addEventListener('click', function () { S.stop = true; });
+  els.from.addEventListener('change', langChanged);
+  els.to.addEventListener('change', langChanged);
+  els.swap.addEventListener('click', function () {
+    var f = els.from.value; els.from.value = els.to.value; els.to.value = f;
+    langChanged();
+  });
+  document.addEventListener('keydown', function (e) {
+    if (/INPUT|SELECT|TEXTAREA/.test((e.target.tagName || ''))) return;
+    if (e.key === 'ArrowLeft') go(S.cur - 1);
+    if (e.key === 'ArrowRight') go(S.cur + 1);
+  });
+
+  els.drop.addEventListener('click', function () { els.file.click(); });
+  els.drop.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); els.file.click(); }
+  });
+  window.addEventListener('dragover', function (e) {
+    e.preventDefault();
+    if (!S.pdf) document.body.classList.add('dragging');
+  });
+  window.addEventListener('dragleave', function (e) {
+    if (!e.relatedTarget) document.body.classList.remove('dragging');
+  });
+  window.addEventListener('drop', function (e) {
+    e.preventDefault();
+    document.body.classList.remove('dragging');
+    var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+    if (f && !S.pdf) openFile(f);
+  });
+
+  render();
+  updateNav();
+})();
+</script>
+</body>
+</html>
