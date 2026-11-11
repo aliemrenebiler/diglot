@@ -6,4 +6,4 @@ Open a PDF, pick the original and target languages, and Diglot translates it pag
 
 ## Usage
 
-Open `index.html` in desktop Chrome 138 or newer (serve it locally if the browser blocks the file, e.g. `python3 -m http.server`).
+Serve the folder and open it in desktop Chrome 138 or newer, e.g. `python3 -m http.server` and visit `http://localhost:8000`. (Opening `index.html` directly also works in Chrome, but Safari blocks the bundled fonts on `file://` pages.)

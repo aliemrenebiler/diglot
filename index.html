@@ -4,41 +4,58 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Diglot</title>
-<link rel="icon" href="favicon.svg" type="image/svg+xml">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,400;7..72,600&family=Public+Sans:wght@400;500;600&display=swap">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<script>try { var t = localStorage.getItem('diglot-theme'); if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t); } catch (e) {}</script>
 <style>
+@font-face { font-family: "Literata"; src: url("assets/fonts/literata/literata.ttf") format("truetype"); font-weight: 200 900; font-style: normal; font-display: swap; }
+@font-face { font-family: "Public Sans"; src: url("assets/fonts/public-sans/public-sans.ttf") format("truetype"); font-weight: 100 900; font-style: normal; font-display: swap; }
+@font-face { font-family: "Public Sans"; src: url("assets/fonts/public-sans/public-sans-italic.ttf") format("truetype"); font-weight: 100 900; font-style: italic; font-display: swap; }
 /* Layout: page content on top, one wrapping control bar at the bottom. The bar sticks to the screen edge while scrolling and rests under the content at the end. Warm paper tones, yellow only for warnings. */
 :root {
-  --bg: #ece5d3;
-  --panel: #f6f0e1;
-  --panel-alt: #efe8d6;
-  --ink: #2a251d;
-  --muted: #7b705f;
-  --line: #d4c9b1;
-  --btn-bg: #2a251d;
-  --btn-fg: #f6f0e1;
-  --warn-bg: #f4df9a;
-  --warn-ink: #4b3a00;
+  --bg: #f3e3d0;
+  --panel: #fbf1e4;
+  --panel-alt: #f6e6d3;
+  --ink: #3a2418;
+  --muted: #8a6a55;
+  --line: #e3c9ae;
+  --btn-bg: #b4532a;
+  --btn-fg: #fff6ea;
+  --warn-bg: #f6d58a;
+  --warn-ink: #4a3000;
+  --icon-filter: brightness(0) saturate(100%) invert(14%) sepia(73%) saturate(282%) hue-rotate(337deg) brightness(101%) contrast(103%);
   --font-read: "Literata", Georgia, "Times New Roman", serif;
   --font-ui: "Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #1b1812;
-    --panel: #23201a;
-    --panel-alt: #1f1c16;
-    --ink: #e9e0cc;
-    --muted: #a39884;
-    --line: #3a352b;
-    --btn-bg: #e9e0cc;
-    --btn-fg: #1b1812;
-    --warn-bg: #3f3411;
-    --warn-ink: #f2db8c;
+  :root:not([data-theme="light"]) {
+    --bg: #1f1510;
+    --panel: #2a1c15;
+    --panel-alt: #241812;
+    --ink: #f2e0cc;
+    --muted: #b89a84;
+    --line: #46301f;
+    --btn-bg: #e58a55;
+    --btn-fg: #2a140a;
+    --warn-bg: #4a3410;
+    --warn-ink: #f6d98a;
+    --icon-filter: brightness(0) saturate(100%) invert(37%) sepia(53%) saturate(74%) hue-rotate(351deg) brightness(203%) contrast(118%);
     color-scheme: dark;
   }
+}
+:root[data-theme="dark"] {
+  --bg: #1f1510;
+  --panel: #2a1c15;
+  --panel-alt: #241812;
+  --ink: #f2e0cc;
+  --muted: #b89a84;
+  --line: #46301f;
+  --btn-bg: #e58a55;
+  --btn-fg: #2a140a;
+  --warn-bg: #4a3410;
+  --warn-ink: #f6d98a;
+  --icon-filter: brightness(0) saturate(100%) invert(37%) sepia(53%) saturate(74%) hue-rotate(351deg) brightness(203%) contrast(118%);
+  color-scheme: dark;
 }
 
 * { box-sizing: border-box; }
@@ -133,6 +150,7 @@ main.empty { justify-content: center; align-items: center; gap: 48px; }
   font-family: var(--font-read);
   font-size: 26px;
   font-weight: 600;
+  font-variation-settings: "opsz" 12;
   line-height: 1.25;
   text-wrap: balance;
 }
@@ -187,6 +205,10 @@ body:not(.empty) .bar-in { max-width: 1168px; }
 }
 .btn:hover:not(:disabled) { border-color: var(--ink); }
 .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.icon { display: block; width: 18px; height: 18px; filter: var(--icon-filter); }
+.btn.icon-btn { padding: 0; width: 38px; }
+.theme { margin-left: auto; }
+.status:not(:empty) + .theme { margin-left: 0; }
 .btn.primary { background: var(--btn-bg); color: var(--btn-fg); border-color: var(--btn-bg); font-weight: 500; }
 
 select, .num {
@@ -254,7 +276,7 @@ select:hover { border-color: var(--ink); }
     <button class="btn primary" id="openBtn" type="button">Open PDF</button>
     <input id="file" type="file" accept="application/pdf,.pdf" hidden>
     <select id="from" aria-label="Original language"></select>
-    <button class="btn" id="swap" type="button" aria-label="Swap languages" title="Swap languages">&#8644;</button>
+    <button class="btn icon-btn" id="swap" type="button" aria-label="Swap languages" title="Swap languages"><img class="icon" src="assets/icons/arrow-right-left.svg" alt="" aria-hidden="true"></button>
     <select id="to" aria-label="Translate into"></select>
     <span class="pagectl" id="pagectl" hidden>
       <button class="btn" id="prev" type="button" aria-label="Previous page">&larr;</button>
@@ -264,6 +286,7 @@ select:hover { border-color: var(--ink); }
     </span>
     <button class="btn" id="stop" type="button" hidden>Stop</button>
     <span class="status" id="status" role="status" aria-live="polite"></span>
+    <button class="btn icon-btn theme" id="theme" type="button"><img class="icon" id="themeIcon" src="assets/icons/sun-moon.svg" alt="" aria-hidden="true"></button>
   </div>
 </footer>
 
@@ -628,6 +651,30 @@ select:hover { border-color: var(--ink); }
   els.stop.addEventListener('click', function () { S.stop = true; });
   els.from.addEventListener('change', langChanged);
   els.to.addEventListener('change', langChanged);
+  /* ---------- theme: system / light / dark ---------- */
+  (function () {
+    var modes = ['system', 'light', 'dark'];
+    var labels = { system: 'System', light: 'Light', dark: 'Dark' };
+    var btn = document.getElementById('theme'), icon = document.getElementById('themeIcon');
+    var icons = { system: 'assets/icons/sun-moon.svg', light: 'assets/icons/sun.svg', dark: 'assets/icons/moon.svg' };
+    var mode = 'system';
+    try { var saved = localStorage.getItem('diglot-theme'); if (saved === 'light' || saved === 'dark') mode = saved; } catch (e) {}
+    function apply() {
+      if (mode === 'system') document.documentElement.removeAttribute('data-theme');
+      else document.documentElement.setAttribute('data-theme', mode);
+      icon.src = icons[mode];
+      var next = modes[(modes.indexOf(mode) + 1) % modes.length];
+      btn.setAttribute('aria-label', 'Theme: ' + labels[mode] + '. Switch to ' + labels[next]);
+      btn.title = 'Theme: ' + labels[mode] + ' (click for ' + labels[next] + ')';
+    }
+    btn.addEventListener('click', function () {
+      mode = modes[(modes.indexOf(mode) + 1) % modes.length];
+      try { if (mode === 'system') localStorage.removeItem('diglot-theme'); else localStorage.setItem('diglot-theme', mode); } catch (e) {}
+      apply();
+    });
+    apply();
+  })();
+
   els.swap.addEventListener('click', function () {
     var f = els.from.value; els.from.value = els.to.value; els.to.value = f;
     langChanged();
