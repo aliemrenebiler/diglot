@@ -150,7 +150,9 @@ main {
 main.empty { justify-content: center; align-items: center; gap: 48px; }
 main:not(.empty) { padding: 0; gap: 0; }
 main:not(.empty) .notice { margin: 16px 16px 0; }
-.intro, .drop { width: 100%; max-width: 640px; }
+.intro, .drop, .unsupported { width: 100%; max-width: 640px; }
+.logo { align-self: center; width: 72px; height: 72px; margin-bottom: 8px; }
+.unsupported { text-align: center; font-size: 17px; line-height: 1.6; text-wrap: balance; padding: 20px 24px; border: 1px solid color-mix(in srgb, var(--warn-ink) 40%, var(--warn-bg)); border-radius: 10px; }
 .intro { display: flex; flex-direction: column; align-items: stretch; text-align: center; gap: 8px; }
 .intro h1 {
   margin: 0;
@@ -162,15 +164,17 @@ main:not(.empty) .notice { margin: 16px 16px 0; }
   text-wrap: balance;
 }
 .intro p { margin: 0; color: var(--muted); text-align: center; font-size: 17px; line-height: 1.6; }
-.drop {
-  border: 2px dashed var(--line);
-  border-radius: 10px;
-  padding: 48px 16px;
-  text-align: center;
+.drop { text-align: center; color: var(--ink); font-size: 17px; line-height: 1.6; text-wrap: balance; padding: 20px 24px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; }
+.here {
+  appearance: none;
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  color: var(--btn-bg);
   cursor: pointer;
-  color: var(--muted);
-  font-size: 17px;
 }
+.here:hover { text-decoration: underline; }
 .dropveil {
   position: fixed;
   top: 0;
@@ -364,11 +368,13 @@ body.dragging .dropveil { opacity: 1; visibility: visible; transition: opacity 0
     </span>
   </div>
   <section class="intro" id="intro">
+    <img class="logo" src="assets/favicon.svg" alt="">
     <h1>Diglot</h1>
-    <p>Open a PDF to read the original text on the left and its translation on the right. Pick the original language and the language you want in the bar below, then open the file. Translation starts as soon as the file opens.</p>
-    <p>Translation runs on your computer with Chrome's built-in translator, so the file is not uploaded anywhere. This needs desktop Chrome 138 or newer.</p>
+    <p>Open a PDF to read the original text on the left and its translation on the right.</p>
+    <p>Translation runs on your computer with Chrome's built-in translator.</p>
   </section>
-  <div class="drop" id="drop" role="button" tabindex="0" aria-label="Open a PDF">Click or drag &amp; drop a PDF here</div>
+  <p class="drop" id="drop">Click <button class="here" id="here" type="button">here</button> to select a PDF file, or drag &amp; drop it onto this page.</p>
+  <div class="notice unsupported" id="unsupported" hidden>This browser can't translate. Use desktop Chrome 138 or newer.</div>
   <div class="cols" id="sheet" hidden>
     <section class="col"><span class="badge" id="hOrig">Original</span><div id="origBody"></div></section>
     <section class="col"><span class="badge" id="hTr">Translation</span><div id="trBody"></div></section>
@@ -415,13 +421,14 @@ body.dragging .dropveil { opacity: 1; visibility: visible; transition: opacity 0
     ['es', 'Spanish'], ['it', 'Italian'], ['pt', 'Portuguese'], ['ru', 'Russian'], ['ar', 'Arabic'],
     ['nl', 'Dutch'], ['pl', 'Polish'], ['ja', 'Japanese'], ['zh', 'Chinese'], ['ko', 'Korean']
   ];
+  var SUPPORTED = 'Translator' in self;
   var $ = function (id) { return document.getElementById(id); };
   var els = {
     open: $('openBtn'), file: $('file'), from: $('from'), to: $('to'), swap: $('swap'),
     pagectl: $('pagectl'), prev: $('prev'), next: $('next'), num: $('pageNum'), cell: $('pageCell'), pbtn: $('pageBtn'), cur: $('pageCur'), of: $('pageOf'),
     stop: $('stop'), origBody: $('origBody'), trBody: $('trBody'), sheet: $('sheet'), status: $('status'), bar: $('bar'),
     notice: $('notice'), noticeMsg: $('noticeMsg'), noticeFallback: $('noticeFallback'),
-    hOrig: $('hOrig'), hTr: $('hTr'), drop: $('drop'), intro: $('intro')
+    hOrig: $('hOrig'), hTr: $('hTr'), drop: $('drop'), here: $('here'), unsupported: $('unsupported'), intro: $('intro')
   };
 
   var S = {
@@ -569,7 +576,8 @@ body.dragging .dropveil { opacity: 1; visibility: visible; transition: opacity 0
     els.trBody.textContent = '';
     S.oc = []; S.tc = []; S.hl = [];
     S.shown = 0;
-    els.drop.hidden = !!S.pdf;
+    els.drop.hidden = !!S.pdf || !SUPPORTED;
+    els.unsupported.hidden = !!S.pdf || SUPPORTED;
     els.intro.hidden = !!S.pdf;
     document.querySelector('main').classList.toggle('empty', !S.pdf);
     document.body.classList.toggle('empty', !S.pdf);
@@ -612,6 +620,7 @@ body.dragging .dropveil { opacity: 1; visibility: visible; transition: opacity 0
   function updateNav() {
     var has = !!S.pdf;
     els.open.hidden = S.running;
+    els.open.disabled = !SUPPORTED;
     els.pagectl.hidden = !has;
     els.cur.textContent = S.cur;
     if (!S.editing) els.num.value = S.cur;
@@ -635,7 +644,7 @@ body.dragging .dropveil { opacity: 1; visibility: visible; transition: opacity 0
 
   /* ---------- opening and closing ---------- */
   async function openFile(file) {
-    if (!file) return;
+    if (!file || !SUPPORTED) return;
     if (S.pdf) await closePdf();
     if (!window.pdfjsLib) { setStatus('The PDF reader failed to load. Check your connection and reload.'); return; }
     setStatus('Opening ' + file.name + '...');
@@ -883,17 +892,14 @@ body.dragging .dropveil { opacity: 1; visibility: visible; transition: opacity 0
     if (e.key === 'ArrowRight') go(S.cur + 1);
   });
 
-  els.drop.addEventListener('click', function () { els.file.click(); });
-  els.drop.addEventListener('keydown', function (e) {
-    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); els.file.click(); }
-  });
+  els.here.addEventListener('click', function () { els.file.click(); });
   var dragDepth = 0;
   function hasFiles(e) {
     var t = e.dataTransfer && e.dataTransfer.types;
     return !!t && Array.prototype.indexOf.call(t, 'Files') >= 0;
   }
   window.addEventListener('dragenter', function (e) {
-    if (!hasFiles(e)) return;
+    if (!hasFiles(e) || !SUPPORTED) return;
     dragDepth++;
     document.body.classList.add('dragging');
   });
@@ -910,7 +916,7 @@ body.dragging .dropveil { opacity: 1; visibility: visible; transition: opacity 0
     dragDepth = 0;
     document.body.classList.remove('dragging');
     var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
-    if (f) openFile(f);
+    if (f && SUPPORTED) openFile(f);
   });
 
   /* keep the drop overlay above the bar, whatever the bar's height */
