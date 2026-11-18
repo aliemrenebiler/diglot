@@ -29,6 +29,7 @@
   --font-ui: "Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
   --on-btn-filter: brightness(0) invert(1);
   --pad: 24px;
+  --gap: 28px;
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
@@ -147,7 +148,7 @@ main {
 @keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .s.fade { animation: none; } }
 
-main.empty { justify-content: center; align-items: center; gap: 48px; }
+main.empty { justify-content: center; align-items: center; gap: var(--gap); }
 main:not(.empty) { padding: 0; gap: 0; }
 main:not(.empty) .notice { margin: 16px 16px 0; }
 .intro, .drop, .unsupported { width: 100%; max-width: 640px; }
@@ -155,7 +156,7 @@ main:not(.empty) .notice { margin: 16px 16px 0; }
 .unsupported { text-align: center; font-size: 17px; line-height: 1.6; text-wrap: balance; padding: 20px 24px; border: 1px solid color-mix(in srgb, var(--warn-ink) 40%, var(--warn-bg)); border-radius: 10px; }
 .intro { display: flex; flex-direction: column; align-items: stretch; text-align: center; gap: 8px; }
 .intro h1 {
-  margin: 0;
+  margin: 0 0 calc(var(--gap) - 8px);
   font-family: var(--font-read);
   font-size: 26px;
   font-weight: 600;
@@ -163,7 +164,7 @@ main:not(.empty) .notice { margin: 16px 16px 0; }
   line-height: 1.25;
   text-wrap: balance;
 }
-.intro p { margin: 0; color: var(--muted); text-align: center; font-size: 17px; line-height: 1.6; }
+.intro p { margin: 0; color: var(--muted); text-align: center; font-size: 17px; line-height: 1.6; text-wrap: pretty; }
 .drop { text-align: center; color: var(--ink); font-size: 17px; line-height: 1.6; text-wrap: balance; padding: 20px 24px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; }
 .here {
   appearance: none;
@@ -370,8 +371,7 @@ body.dragging .dropveil { opacity: 1; visibility: visible; transition: opacity 0
   <section class="intro" id="intro">
     <img class="logo" src="assets/favicon.svg" alt="">
     <h1>Diglot</h1>
-    <p>Open a PDF to read the original text on the left and its translation on the right.</p>
-    <p>Translation runs on your computer with Chrome's built-in translator.</p>
+    <p>Open a PDF to read the original text on the left and its translation on the right. Translation runs on your computer with Chrome's built-in translator.</p>
   </section>
   <p class="drop" id="drop">Click <button class="here" id="here" type="button">here</button> to select a PDF file, or drag &amp; drop it onto this page.</p>
   <div class="notice unsupported" id="unsupported" hidden>This browser can't translate. Use desktop Chrome 138 or newer.</div>
